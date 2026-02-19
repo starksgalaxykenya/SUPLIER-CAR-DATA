@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CK Manager · secure import</title>
+    <title>CK Manager · sequential · search · PDF</title>
     <!-- Firebase compat -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <!-- jsPDF -->
+    <!-- jsPDF + autotable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <!-- SheetJS for Excel import -->
+    <!-- SheetJS -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * {
@@ -59,7 +59,6 @@
         }
         .tab-btn:hover { border-color: #7fa07f; }
 
-        /* hidden import trigger - subtle but accessible */
         .secret-import-trigger {
             display: inline-block;
             cursor: pointer;
@@ -69,12 +68,8 @@
             transition: 0.2s;
             margin-left: 1rem;
         }
-        .secret-import-trigger:hover {
-            color: #8fbc8f;
-            transform: scale(1.05);
-        }
+        .secret-import-trigger:hover { color: #8fbc8f; transform: scale(1.05); }
 
-        /* modal overlay */
         .modal {
             display: none;
             position: fixed;
@@ -95,11 +90,7 @@
             border: 1px solid #5f8b5f;
             box-shadow: 0 30px 50px #00000080;
         }
-        .modal-card h3 {
-            color: #c6f0c6;
-            margin-bottom: 1.5rem;
-            font-weight: 400;
-        }
+        .modal-card h3 { color: #c6f0c6; margin-bottom: 1.5rem; font-weight: 400; }
         .modal-card input[type="file"] {
             background: #0f171f;
             border: 1px solid #4e6d5e;
@@ -109,17 +100,8 @@
             color: white;
             margin: 1rem 0;
         }
-        .modal-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-            margin-top: 2rem;
-        }
-        .btn-secret {
-            background: #2e452e;
-            border: 1px solid #7ba07b;
-            color: white;
-        }
+        .modal-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; }
+        .btn-secret { background: #2e452e; border: 1px solid #7ba07b; color: white; }
 
         .form-row {
             display: flex;
@@ -160,10 +142,7 @@
             box-shadow: 0 0 0 2px #2a4a2a80;
             outline: none;
         }
-        .field-group input[readonly] {
-            background: #1b232f;
-            color: #cbd6e6;
-        }
+        .field-group input[readonly] { background: #1b232f; color: #cbd6e6; }
 
         .exchange-rate-row {
             background: #1b2620;
@@ -207,6 +186,40 @@
             border-color: #527252;
             color: #c6e2c6;
         }
+        .btn-outline:hover { background: #1f311f; }
+
+        /* search bar */
+        .search-section {
+            background: #1b2320;
+            border-radius: 40px;
+            padding: 1.2rem 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1.5rem;
+            border: 1px solid #3d5841;
+        }
+        .search-input {
+            flex: 2;
+            min-width: 250px;
+            background: #0f171f;
+            border: 1px solid #4e6d5e;
+            border-radius: 30px;
+            padding: 0.8rem 1.5rem;
+            color: white;
+            font-size: 0.95rem;
+        }
+        .range-input {
+            width: 100px;
+            background: #0f171f;
+            border: 1px solid #4e6d5e;
+            border-radius: 30px;
+            padding: 0.8rem 1rem;
+            color: white;
+            text-align: center;
+        }
+        .search-label { color: #bde1bd; font-weight: 500; }
 
         .table-wrapper {
             overflow-x: auto;
@@ -248,56 +261,75 @@
             color: #daf0da;
         }
 
+        .print-docs-area {
+            background: #1e2820;
+            border-radius: 32px;
+            padding: 2rem;
+            border: 1px solid #557755;
+        }
+        .doc-thumb-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .doc-card {
+            background: #172117;
+            border: 1px solid #628062;
+            border-radius: 24px;
+            padding: 1.5rem;
+            width: 260px;
+            color: #daf0da;
+        }
+        .doc-card h4 { color: #c9f0c9; font-weight: 500; }
+
         .hidden-tab { display: none; }
-        #importFeedback { margin-top: 1rem; color: #b3e0b3; font-size: 0.9rem; }
+        #saveFeedback, #importFeedback { margin-top: 1rem; color: #b3e0b3; }
+        .search-highlight { background: #3c6e3c; font-weight: bold; }
     </style>
 </head>
 <body>
 <div class="app-container">
     <div style="display: flex; align-items: center; margin-bottom: 2rem;">
-        <h2 style="font-weight: 400; color: #eaf3ea;"><span style="color: #9fda9f;">CK</span> manager · vehicle finance</h2>
-        <!-- secret import trigger (looks like a simple icon) -->
-        <span class="secret-import-trigger" id="importTrigger" title="import data (restricted)">⚡</span>
+        <h2 style="font-weight: 400; color: #eaf3ea;"><span style="color: #9fda9f;">CK</span> manager · sequential WANB</h2>
+        <span class="secret-import-trigger" id="importTrigger" title="import data">⚡</span>
     </div>
 
     <div class="tabs" id="tabNavigation">
         <button class="tab-btn active" data-tab="entry">➕ entry</button>
-        <button class="tab-btn" data-tab="spreadsheet">📋 spreadsheet</button>
+        <button class="tab-btn" data-tab="spreadsheet">📋 spreadsheet + search</button>
         <button class="tab-btn" data-tab="overview">📊 overview & pdf</button>
     </div>
 
-    <!-- hidden import modal (secure, no visible hints) -->
+    <!-- import modal -->
     <div class="modal" id="importModal">
         <div class="modal-card">
             <h3>🔒 secure import</h3>
-            <p style="color:#b8d5b8; margin-bottom:1.5rem;">upload excel file (.xlsx) — only GOONET sheet data will be mapped</p>
+            <p style="color:#b8d5b8; margin-bottom:1.5rem;">upload excel file (.xlsx) — GOONET sheet</p>
             <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv">
             <div class="modal-actions">
                 <button class="btn btn-outline" id="cancelImport">cancel</button>
-                <button class="btn btn-secret" id="confirmImport">import & save to firebase</button>
+                <button class="btn btn-secret" id="confirmImport">import & save</button>
             </div>
             <div id="importFeedback"></div>
         </div>
     </div>
 
-    <!-- entry tab (unchanged, but SM auto now works with import) -->
+    <!-- entry tab -->
     <div id="tab-entry" class="tab-content card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3 style="font-weight: 400; color: #d2f0d2;">new record · <span style="font-size:0.9rem;">SM seq WANB‑xx</span></h3>
-            <span class="rate-label">⚡ exchange</span>
+            <h3 style="font-weight: 400; color: #d2f0d2;">new record · SM seq WANB‑xx</h3>
+            <span class="rate-label">⚡ exchange (default 130)</span>
         </div>
         <div class="exchange-rate-row">
             <span class="rate-label">💱 rate</span>
-            <input type="number" id="exchangeRateInput" class="rate-input" value="132.80" step="0.5" min="0">
+            <input type="number" id="exchangeRateInput" class="rate-input" value="130.00" step="0.5" min="0">
         </div>
         <div class="form-row">
             <div class="field-group"><label>Payment rate</label><input type="text" id="paymentRate" value="10.5%"></div>
             <div class="field-group"><label>SM (seq.)</label><input type="text" id="sm" readonly placeholder="WANB-01" value="WANB-01"></div>
             <div class="field-group"><label>Supplier</label>
-                <select id="supplier">
-                    <option value="GOONET">GOONET</option><option value="ENHANCE">ENHANCE</option><option value="TTC">TTC</option>
-                    <option value="OTTOS">OTTOS</option><option value="GLOBAL">GLOBAL</option>
-                </select>
+                <select id="supplier"><option value="GOONET">GOONET</option><option value="ENHANCE">ENHANCE</option><option value="TTC">TTC</option><option value="OTTOS">OTTOS</option><option value="GLOBAL">GLOBAL</option></select>
             </div>
             <div class="field-group"><label>Make & Model</label><input type="text" id="makeModel" value="Toyota Hilux"></div>
         </div>
@@ -319,21 +351,55 @@
         <p id="saveFeedback"></p>
     </div>
 
-    <!-- spreadsheet and overview same as before (trimmed for length) -->
+    <!-- spreadsheet with search & range -->
     <div id="tab-spreadsheet" class="tab-content card hidden-tab">
-        <div class="action-bar"><h3>📋 all records</h3><button class="btn btn-outline" id="refreshSheetBtn">↻ refresh</button></div>
-        <div class="table-wrapper"><table><thead><tr><th>Pay rate</th><th>SM</th><th>Supplier</th><th>Make/model</th><th>Chassis</th><th>CFR</th><th>Paid USD</th><th>Sell price</th><th>Margin USD</th><th>Margin KES</th></tr></thead><tbody id="sheetBody"><tr><td colspan="10">loading...</td></tr></tbody></table></div>
+        <div style="margin-bottom: 1.5rem;">
+            <h3 style="color:#d2f0d2;">🔍 search & range filter</h3>
+        </div>
+        <div class="search-section">
+            <span class="search-label">🔎 search:</span>
+            <input type="text" id="searchInput" class="search-input" placeholder="SM, model, chassis, supplier...">
+            
+            <span class="search-label">from:</span>
+            <input type="text" id="rangeFrom" class="range-input" placeholder="WANB-01">
+            <span class="search-label">to:</span>
+            <input type="text" id="rangeTo" class="range-input" placeholder="WANB-50">
+            
+            <button class="btn btn-outline" id="applySearchBtn">apply</button>
+            <button class="btn btn-outline" id="clearSearchBtn">clear</button>
+            <button class="btn btn-primary" id="downloadRangePdf">📥 download range PDF</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Pay rate</th><th>SM</th><th>Supplier</th><th>Make/model</th><th>Chassis</th><th>CFR</th><th>Paid USD</th><th>Sell price</th><th>Margin USD</th><th>Margin KES</th></tr></thead>
+                <tbody id="sheetBody"><tr><td colspan="10" style="text-align:center;">loading...</td></tr></tbody>
+            </table>
+        </div>
+        <div style="margin-top: 1rem; color: #9bb89b;" id="resultCount"></div>
     </div>
 
+    <!-- overview & PDF (sequential) -->
     <div id="tab-overview" class="tab-content card hidden-tab">
-        <div class="overview-stats"><div class="stat-item" id="totalVehiclesStat">Total: 0</div><div class="stat-item" id="totalMarginUsdStat">Margin USD: 0</div><div class="stat-item" id="totalMarginKesStat">Margin KES: 0</div></div>
-        <div class="print-docs-area"><h3 style="color:#d2f0d2;">🖨️ pdf</h3><div style="display:flex; gap:2rem; margin:2rem 0;"><button class="btn btn-primary" id="downloadPdfReport">📥 full report PDF</button><button class="btn btn-outline" id="downloadSnapshotPdf">📸 snapshot PDF</button></div><div class="doc-thumb-grid" id="snapshotGrid"></div></div>
+        <div class="overview-stats">
+            <div class="stat-item" id="totalVehiclesStat">Total: 0</div>
+            <div class="stat-item" id="totalMarginUsdStat">Margin USD: 0</div>
+            <div class="stat-item" id="totalMarginKesStat">Margin KES: 0</div>
+        </div>
+        <div class="print-docs-area">
+            <h3 style="color:#d2f0d2;">🖨️ PDF reports (sequential WANB order)</h3>
+            <div style="display: flex; gap: 2rem; margin: 2rem 0; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="downloadPdfReport">📥 full report (WANB order)</button>
+                <button class="btn btn-outline" id="downloadSnapshotPdf">📸 snapshot PDF</button>
+            </div>
+            <div class="doc-thumb-grid" id="snapshotGrid"></div>
+        </div>
     </div>
 </div>
 
 <script>
     (function() {
-        // firebase init
+        // Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCuUKCxYx0jYKqWOQaN82K5zFGlQsKQsK0",
             authDomain: "ck-manager-1abdc.firebaseapp.com",
@@ -346,7 +412,7 @@
         const db = firebase.firestore();
         const recordsCol = db.collection('vehicleRecords');
 
-        // DOM elements
+        // DOM elements with null checks
         const tabs = document.querySelectorAll('.tab-btn');
         const tabEntry = document.getElementById('tab-entry');
         const tabSpread = document.getElementById('tab-spreadsheet');
@@ -365,7 +431,6 @@
         const saveBtn = document.getElementById('saveToFirebaseBtn');
         const clearBtn = document.getElementById('clearFormBtn');
         const calcBtn = document.getElementById('calculateBtn');
-        const refreshBtn = document.getElementById('refreshSheetBtn');
         const sheetBody = document.getElementById('sheetBody');
         const snapshotGrid = document.getElementById('snapshotGrid');
         const totalVehiclesSpan = document.getElementById('totalVehiclesStat');
@@ -373,7 +438,20 @@
         const totalMarginKesSpan = document.getElementById('totalMarginKesStat');
         const feedback = document.getElementById('saveFeedback');
 
-        // ----- modal / secret import -----
+        // Search elements
+        const searchInput = document.getElementById('searchInput');
+        const rangeFrom = document.getElementById('rangeFrom');
+        const rangeTo = document.getElementById('rangeTo');
+        const applySearchBtn = document.getElementById('applySearchBtn');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        const downloadRangeBtn = document.getElementById('downloadRangePdf');
+        const resultCount = document.getElementById('resultCount');
+
+        // PDF buttons
+        const downloadPdfBtn = document.getElementById('downloadPdfReport');
+        const downloadSnapshotBtn = document.getElementById('downloadSnapshotPdf');
+
+        // Import modal elements
         const importTrigger = document.getElementById('importTrigger');
         const importModal = document.getElementById('importModal');
         const cancelImport = document.getElementById('cancelImport');
@@ -381,221 +459,539 @@
         const excelInput = document.getElementById('excelFileInput');
         const importFeedback = document.getElementById('importFeedback');
 
-        importTrigger.addEventListener('click', () => {
-            importModal.classList.add('active');
-            excelInput.value = ''; // clear previous
-            importFeedback.innerText = '';
-        });
-        cancelImport.addEventListener('click', () => importModal.classList.remove('active'));
-        window.addEventListener('click', (e) => { if (e.target === importModal) importModal.classList.remove('active'); });
+        // Helper function to extract number from WANB-XX
+        function getSmNumber(sm) {
+            if (!sm || !sm.startsWith('WANB-')) return 0;
+            const num = parseInt(sm.split('-')[1], 10);
+            return isNaN(num) ? 0 : num;
+        }
 
-        // ----- sequential SM -----
-        async function updateSequentialSM() {
+        // Sort records by SM numerically
+        function sortRecordsBySm(records) {
+            return records.sort((a, b) => {
+                const numA = getSmNumber(a.sm);
+                const numB = getSmNumber(b.sm);
+                return numA - numB;
+            });
+        }
+
+        // Set default exchange to 130
+        if (exchange) exchange.value = '130.00';
+
+        // Import modal functionality
+        if (importTrigger && importModal) {
+            importTrigger.addEventListener('click', () => {
+                importModal.classList.add('active');
+                if (excelInput) excelInput.value = '';
+                if (importFeedback) importFeedback.innerText = '';
+            });
+        }
+        
+        if (cancelImport && importModal) {
+            cancelImport.addEventListener('click', () => importModal.classList.remove('active'));
+        }
+        
+        window.addEventListener('click', (e) => {
+            if (importModal && e.target === importModal) importModal.classList.remove('active');
+        });
+
+        // ----- sequential SM (based on WANB number) -----
+        async function getNextSM() {
             try {
-                const snap = await recordsCol.orderBy('timestamp', 'desc').limit(1).get();
-                let next = 1;
-                if (!snap.empty) {
-                    const last = snap.docs[0].data().sm;
-                    if (last && last.startsWith('WANB-')) {
-                        const num = parseInt(last.split('-')[1], 10);
-                        if (!isNaN(num)) next = num + 1;
-                    }
-                }
-                smField.value = `WANB-${next.toString().padStart(2, '0')}`;
-            } catch { smField.value = 'WANB-01'; }
+                const snap = await recordsCol.get();
+                let maxNum = 0;
+                snap.forEach(doc => {
+                    const s = doc.data().sm;
+                    const num = getSmNumber(s);
+                    if (num > maxNum) maxNum = num;
+                });
+                return `WANB-${(maxNum + 1).toString().padStart(2, '0')}`;
+            } catch {
+                return 'WANB-01';
+            }
+        }
+        
+        async function updateSequentialSM() {
+            if (smField) smField.value = await getNextSM();
         }
 
         function updateCalc() {
-            const c = parseFloat(cfr.value) || 0, s = parseFloat(sell.value) || 0, r = parseFloat(exchange.value) || 130;
+            if (!cfr || !sell || !exchange || !marginUsd || !marginKes) return;
+            const c = parseFloat(cfr.value) || 0;
+            const s = parseFloat(sell.value) || 0;
+            const r = parseFloat(exchange.value) || 130;
             const usd = s - c;
             marginUsd.value = usd.toFixed(2);
             marginKes.value = (usd * r).toFixed(2);
         }
-        [cfr, paid, sell, exchange].forEach(el => el.addEventListener('input', updateCalc));
-        calcBtn.addEventListener('click', (e) => { e.preventDefault(); updateCalc(); });
-
-        clearBtn.addEventListener('click', async () => {
-            paymentRate.value = ''; makeModel.value = ''; chassis.value = ''; cfr.value = ''; paid.value = ''; sell.value = '';
-            supplier.value = 'GOONET';
-            await updateSequentialSM();
-            updateCalc();
-        });
-
-        saveBtn.addEventListener('click', async () => {
-            const record = {
-                paymentRate: paymentRate.value, sm: smField.value, supplier: supplier.value,
-                makeModel: makeModel.value, chassis: chassis.value, cfr: parseFloat(cfr.value) || 0,
-                paidUsd: parseFloat(paid.value) || 0, sellingPrice: parseFloat(sell.value) || 0,
-                marginUsd: parseFloat(marginUsd.value) || 0, marginKes: parseFloat(marginKes.value) || 0,
-                exchangeRateUsed: parseFloat(exchange.value) || 130,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            try { await recordsCol.add(record); feedback.innerText = '✓ saved'; await updateSequentialSM(); loadSheetData(); updateOverviewAndSnapshots(); } 
-            catch (err) { feedback.innerText = '✗ error'; }
-        });
-
-        // ----- IMPORT LOGIC (secret, parses GOONET sheet) -----
-        confirmImport.addEventListener('click', async () => {
-            const file = excelInput.files[0];
-            if (!file) { importFeedback.innerText = '❌ select a file'; return; }
-            importFeedback.innerText = '⏳ processing ...';
-
-            try {
-                const data = await file.arrayBuffer();
-                const workbook = XLSX.read(data, { type: 'array' });
-                // try to find sheet named "Sheet1" (or first sheet)
-                const sheetName = workbook.SheetNames.find(name => name.toLowerCase().includes('sheet1')) || workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-
-                // find header row (look for "S/M", "SUPPLIER", "Maker & Model" etc.)
-                let headerRowIndex = -1;
-                for (let i = 0; i < Math.min(20, rows.length); i++) {
-                    const row = rows[i];
-                    if (row && row.some(cell => String(cell).includes('S/M')) && row.some(cell => String(cell).includes('SUPPLIER'))) {
-                        headerRowIndex = i;
-                        break;
-                    }
-                }
-                if (headerRowIndex === -1) { importFeedback.innerText = '❌ could not find header row'; return; }
-
-                const headers = rows[headerRowIndex].map(h => String(h).trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
-                const smIdx = headers.findIndex(h => h.includes('sm') || h.includes('sm') || h.includes('s/m'));
-                const suppIdx = headers.findIndex(h => h.includes('supplier'));
-                const modelIdx = headers.findIndex(h => h.includes('maker') || h.includes('make') || h.includes('model'));
-                const chassisIdx = headers.findIndex(h => h.includes('chassis'));
-                const cfrIdx = headers.findIndex(h => h.includes('cfr'));
-                const paidIdx = headers.findIndex(h => h.includes('paid'));
-                const sellIdx = headers.findIndex(h => h.includes('selling') || h.includes('sell') || h.includes('price'));
-
-                if (smIdx === -1 || suppIdx === -1) { importFeedback.innerText = '❌ required columns missing'; return; }
-
-                const records = [];
-                const rateNow = parseFloat(exchange.value) || 130;
-                let importCount = 0;
-
-                for (let i = headerRowIndex + 1; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row || row.length < 3) continue;
-                    const smVal = row[smIdx] ? String(row[smIdx]).trim() : '';
-                    if (!smVal || smVal === '' || smVal.startsWith('WANB-') === false) continue; // only GOONET rows with WANB-
-                    
-                    const supplierVal = row[suppIdx] ? String(row[suppIdx]).trim() : 'GOONET';
-                    const modelVal = row[modelIdx] ? String(row[modelIdx]).trim() : '';
-                    const chassisVal = row[chassisIdx] ? String(row[chassisIdx]).trim() : '';
-                    
-                    let cfrVal = 0, paidVal = 0, sellVal = 0;
-                    if (cfrIdx !== -1) cfrVal = parseFloat(String(row[cfrIdx]).replace(/[^0-9.-]/g, '')) || 0;
-                    if (paidIdx !== -1) paidVal = parseFloat(String(row[paidIdx]).replace(/[^0-9.-]/g, '')) || 0;
-                    if (sellIdx !== -1) sellVal = parseFloat(String(row[sellIdx]).replace(/[^0-9.-]/g, '')) || 0;
-
-                    const marginUsdVal = sellVal - cfrVal;
-                    const marginKesVal = marginUsdVal * rateNow;
-
-                    // skip rows with zero CFR and zero sell (likely empty)
-                    if (cfrVal === 0 && sellVal === 0) continue;
-
-                    records.push({
-                        paymentRate: '1', // default, not in sheet
-                        sm: smVal,
-                        supplier: supplierVal,
-                        makeModel: modelVal,
-                        chassis: chassisVal,
-                        cfr: cfrVal,
-                        paidUsd: paidVal,
-                        sellingPrice: sellVal,
-                        marginUsd: marginUsdVal,
-                        marginKes: marginKesVal,
-                        exchangeRateUsed: rateNow,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    importCount++;
-                }
-
-                if (records.length === 0) { importFeedback.innerText = '⚠️ no valid GOONET rows found'; return; }
-
-                // batch commit (Firestore batches of 500)
-                const batchSize = 400;
-                for (let i = 0; i < records.length; i += batchSize) {
-                    const batch = db.batch();
-                    const chunk = records.slice(i, i + batchSize);
-                    chunk.forEach(r => {
-                        const docRef = recordsCol.doc(); // auto id
-                        batch.set(docRef, r);
-                    });
-                    await batch.commit();
-                }
-
-                importFeedback.innerText = `✅ imported ${records.length} records from GOONET sheet`;
-                importModal.classList.remove('active');
-                await updateSequentialSM(); // recalc next SM based on latest
-                loadSheetData();
-                updateOverviewAndSnapshots();
-
-            } catch (err) {
-                importFeedback.innerText = `❌ error: ${err.message}`;
-            }
-        });
-
-        // ----- load data -----
-        async function loadSheetData() {
-            try {
-                const snap = await recordsCol.orderBy('timestamp', 'desc').get();
-                if (snap.empty) { sheetBody.innerHTML = '<tr><td colspan="10">no records</td></tr>'; return; }
-                const rate = parseFloat(exchange.value) || 130;
-                let html = '';
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    const mu = (d.sellingPrice - d.cfr).toFixed(2);
-                    const mk = (mu * rate).toFixed(2);
-                    html += `<tr><td>${d.paymentRate || ''}</td><td>${d.sm || ''}</td><td>${d.supplier || ''}</td><td>${d.makeModel || ''}</td><td>${d.chassis || ''}</td><td>$${d.cfr?.toFixed(2)}</td><td>$${d.paidUsd?.toFixed(2)}</td><td>$${d.sellingPrice?.toFixed(2)}</td><td>$${mu}</td><td>KES ${mk}</td></tr>`;
-                });
-                sheetBody.innerHTML = html;
-            } catch { sheetBody.innerHTML = '<tr><td colspan="10">error loading</td></tr>'; }
+        
+        if (cfr && paid && sell && exchange) {
+            [cfr, paid, sell, exchange].forEach(el => {
+                if (el) el.addEventListener('input', updateCalc);
+            });
+        }
+        
+        if (calcBtn) {
+            calcBtn.addEventListener('click', (e) => { 
+                e.preventDefault(); 
+                updateCalc(); 
+            });
         }
 
+        if (clearBtn) {
+            clearBtn.addEventListener('click', async () => {
+                if (paymentRate) paymentRate.value = '';
+                if (makeModel) makeModel.value = '';
+                if (chassis) chassis.value = '';
+                if (cfr) cfr.value = '';
+                if (paid) paid.value = '';
+                if (sell) sell.value = '';
+                if (supplier) supplier.value = 'GOONET';
+                await updateSequentialSM();
+                updateCalc();
+            });
+        }
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async () => {
+                if (!smField || !supplier || !makeModel || !chassis || !cfr || !paid || !sell || !marginUsd || !marginKes || !exchange) return;
+                
+                const record = {
+                    paymentRate: paymentRate ? paymentRate.value : '',
+                    sm: smField.value,
+                    supplier: supplier.value,
+                    makeModel: makeModel.value,
+                    chassis: chassis.value,
+                    cfr: parseFloat(cfr.value) || 0,
+                    paidUsd: parseFloat(paid.value) || 0,
+                    sellingPrice: parseFloat(sell.value) || 0,
+                    marginUsd: parseFloat(marginUsd.value) || 0,
+                    marginKes: parseFloat(marginKes.value) || 0,
+                    exchangeRateUsed: parseFloat(exchange.value) || 130,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                try { 
+                    await recordsCol.add(record); 
+                    if (feedback) feedback.innerText = '✓ saved'; 
+                    await updateSequentialSM(); 
+                    loadSheetData(); 
+                    updateOverviewAndSnapshots(); 
+                } catch (err) { 
+                    if (feedback) feedback.innerText = '✗ error'; 
+                }
+            });
+        }
+
+        // ----- IMPORT -----
+        if (confirmImport) {
+            confirmImport.addEventListener('click', async () => {
+                const file = excelInput ? excelInput.files[0] : null;
+                if (!file) { 
+                    if (importFeedback) importFeedback.innerText = '❌ select a file'; 
+                    return; 
+                }
+                if (importFeedback) importFeedback.innerText = '⏳ processing ...';
+
+                try {
+                    const data = await file.arrayBuffer();
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames.find(name => name.toLowerCase().includes('sheet1')) || workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+                    let headerRowIndex = -1;
+                    for (let i = 0; i < Math.min(20, rows.length); i++) {
+                        const row = rows[i];
+                        if (row && row.some(cell => String(cell).includes('S/M')) && row.some(cell => String(cell).includes('SUPPLIER'))) {
+                            headerRowIndex = i;
+                            break;
+                        }
+                    }
+                    if (headerRowIndex === -1) { 
+                        if (importFeedback) importFeedback.innerText = '❌ could not find header row'; 
+                        return; 
+                    }
+
+                    const headers = rows[headerRowIndex].map(h => String(h).trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
+                    const smIdx = headers.findIndex(h => h.includes('sm') || h.includes('s/m'));
+                    const suppIdx = headers.findIndex(h => h.includes('supplier'));
+                    const modelIdx = headers.findIndex(h => h.includes('maker') || h.includes('make') || h.includes('model'));
+                    const chassisIdx = headers.findIndex(h => h.includes('chassis'));
+                    const cfrIdx = headers.findIndex(h => h.includes('cfr'));
+                    const paidIdx = headers.findIndex(h => h.includes('paid'));
+                    const sellIdx = headers.findIndex(h => h.includes('selling') || h.includes('sell') || h.includes('price'));
+
+                    if (smIdx === -1 || suppIdx === -1) { 
+                        if (importFeedback) importFeedback.innerText = '❌ required columns missing'; 
+                        return; 
+                    }
+
+                    const records = [];
+                    const rateNow = 130;
+                    
+                    for (let i = headerRowIndex + 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (!row || row.length < 3) continue;
+                        const smVal = row[smIdx] ? String(row[smIdx]).trim() : '';
+                        if (!smVal || smVal === '' || !smVal.startsWith('WANB-')) continue;
+
+                        const supplierVal = row[suppIdx] ? String(row[suppIdx]).trim() : 'GOONET';
+                        const modelVal = row[modelIdx] ? String(row[modelIdx]).trim() : '';
+                        const chassisVal = row[chassisIdx] ? String(row[chassisIdx]).trim() : '';
+
+                        let cfrVal = 0, paidVal = 0, sellVal = 0;
+                        if (cfrIdx !== -1) cfrVal = parseFloat(String(row[cfrIdx]).replace(/[^0-9.-]/g, '')) || 0;
+                        if (paidIdx !== -1) paidVal = parseFloat(String(row[paidIdx]).replace(/[^0-9.-]/g, '')) || 0;
+                        if (sellIdx !== -1) sellVal = parseFloat(String(row[sellIdx]).replace(/[^0-9.-]/g, '')) || 0;
+
+                        const marginUsdVal = sellVal - cfrVal;
+                        const marginKesVal = marginUsdVal * rateNow;
+
+                        if (cfrVal === 0 && sellVal === 0) continue;
+
+                        records.push({
+                            paymentRate: '1',
+                            sm: smVal,
+                            supplier: supplierVal,
+                            makeModel: modelVal,
+                            chassis: chassisVal,
+                            cfr: cfrVal,
+                            paidUsd: paidVal,
+                            sellingPrice: sellVal,
+                            marginUsd: marginUsdVal,
+                            marginKes: marginKesVal,
+                            exchangeRateUsed: rateNow,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+
+                    if (records.length === 0) { 
+                        if (importFeedback) importFeedback.innerText = '⚠️ no valid GOONET rows found'; 
+                        return; 
+                    }
+
+                    const batchSize = 400;
+                    for (let i = 0; i < records.length; i += batchSize) {
+                        const batch = db.batch();
+                        const chunk = records.slice(i, i + batchSize);
+                        chunk.forEach(r => {
+                            const docRef = recordsCol.doc();
+                            batch.set(docRef, r);
+                        });
+                        await batch.commit();
+                    }
+
+                    if (importFeedback) importFeedback.innerText = `✅ imported ${records.length} records`;
+                    if (importModal) importModal.classList.remove('active');
+                    await updateSequentialSM();
+                    loadSheetData();
+                    updateOverviewAndSnapshots();
+
+                } catch (err) {
+                    if (importFeedback) importFeedback.innerText = `❌ error: ${err.message}`;
+                }
+            });
+        }
+
+        // ----- load spreadsheet with search/range -----
+        let allRecords = [];
+
+        async function loadSheetData() {
+            try {
+                const snap = await recordsCol.get();
+                allRecords = [];
+                snap.forEach(doc => allRecords.push({ id: doc.id, ...doc.data() }));
+                // Sort numerically
+                allRecords = sortRecordsBySm(allRecords);
+                if (typeof applySearchFilter === 'function') applySearchFilter();
+            } catch (err) { 
+                if (sheetBody) sheetBody.innerHTML = `<tr><td colspan="10" style="color:#f7b5b5;">error: ${err.message}</td></tr>`; 
+            }
+        }
+
+        function applySearchFilter() {
+            if (!sheetBody) return;
+            
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const fromVal = rangeFrom ? rangeFrom.value.trim().toUpperCase() : '';
+            const toVal = rangeTo ? rangeTo.value.trim().toUpperCase() : '';
+            const rate = parseFloat(exchange ? exchange.value : '130') || 130;
+
+            // First filter the records
+            let filtered = allRecords.filter(rec => {
+                if (fromVal || toVal) {
+                    const sm = rec.sm || '';
+                    const smNum = getSmNumber(sm);
+                    const fromNum = fromVal ? getSmNumber(fromVal) : 0;
+                    const toNum = toVal ? getSmNumber(toVal) : Infinity;
+                    
+                    if (fromVal && smNum < fromNum) return false;
+                    if (toVal && smNum > toNum) return false;
+                }
+                if (searchTerm) {
+                    const haystack = `${rec.sm} ${rec.makeModel} ${rec.chassis} ${rec.supplier}`.toLowerCase();
+                    return haystack.includes(searchTerm);
+                }
+                return true;
+            });
+
+            // Then sort the filtered results numerically
+            filtered = sortRecordsBySm(filtered);
+            
+            renderTable(filtered, rate);
+            if (resultCount) resultCount.innerText = `showing ${filtered.length} of ${allRecords.length} records`;
+        }
+
+        function renderTable(records, rate) {
+            if (!sheetBody) return;
+            
+            if (records.length === 0) {
+                sheetBody.innerHTML = '<tr><td colspan="10" style="text-align:center;">no matching records</td></tr>';
+                return;
+            }
+            let html = '';
+            records.forEach(d => {
+                const mu = (d.sellingPrice - d.cfr).toFixed(2);
+                const mk = (mu * rate).toFixed(2);
+                html += `<tr>
+                    <td>${d.paymentRate || ''}</td>
+                    <td>${d.sm || ''}</td>
+                    <td>${d.supplier || ''}</td>
+                    <td>${d.makeModel || ''}</td>
+                    <td>${d.chassis || ''}</td>
+                    <td>$${d.cfr?.toFixed(2)}</td>
+                    <td>$${d.paidUsd?.toFixed(2)}</td>
+                    <td>$${d.sellingPrice?.toFixed(2)}</td>
+                    <td>$${mu}</td>
+                    <td>KES ${mk}</td>
+                </tr>`;
+            });
+            sheetBody.innerHTML = html;
+        }
+
+        // Search event listeners
+        if (applySearchBtn) applySearchBtn.addEventListener('click', applySearchFilter);
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', () => {
+                if (searchInput) searchInput.value = '';
+                if (rangeFrom) rangeFrom.value = '';
+                if (rangeTo) rangeTo.value = '';
+                applySearchFilter();
+            });
+        }
+
+        // ----- overview & snapshots -----
         async function updateOverviewAndSnapshots() {
             try {
                 const snap = await recordsCol.get();
-                const docs = snap.docs.map(d => d.data());
+                let docs = [];
+                snap.forEach(doc => docs.push(doc.data()));
+                // Sort numerically for display
+                docs = sortRecordsBySm(docs);
+                
                 const total = docs.length;
                 const totalUsd = docs.reduce((acc, d) => acc + (d.sellingPrice - d.cfr), 0);
-                const rate = parseFloat(exchange.value) || 130;
-                totalVehiclesSpan.innerText = `Total: ${total}`;
-                totalMarginUsdSpan.innerText = `Margin USD: $${totalUsd.toFixed(2)}`;
-                totalMarginKesSpan.innerText = `Margin KES: KES ${(totalUsd * rate).toFixed(2)}`;
+                const rate = parseFloat(exchange ? exchange.value : '130') || 130;
+                
+                if (totalVehiclesSpan) totalVehiclesSpan.innerText = `Total vehicles: ${total}`;
+                if (totalMarginUsdSpan) totalMarginUsdSpan.innerText = `Total margin USD: $${totalUsd.toFixed(2)}`;
+                if (totalMarginKesSpan) totalMarginKesSpan.innerText = `Total margin KES: KES ${(totalUsd * rate).toFixed(2)}`;
+
+                // Get first 4 for snapshot (after sorting)
                 let cards = '';
-                snap.docs.slice(0,4).forEach(d => {
-                    const dd = d.data();
-                    const mu = (dd.sellingPrice - dd.cfr).toFixed(2);
-                    cards += `<div class="doc-card"><h4>${dd.makeModel||''}</h4><p>SM: ${dd.sm||''} | ${dd.supplier||''}</p><p>💰 USD $${mu}</p></div>`;
+                docs.slice(0, 4).forEach(d => {
+                    const mu = (d.sellingPrice - d.cfr).toFixed(2);
+                    cards += `<div class="doc-card">
+                        <h4>${d.makeModel || '—'}</h4>
+                        <p>SM: ${d.sm || ''} | ${d.supplier || ''}</p>
+                        <p>💰 USD margin: $${mu}</p>
+                        <p>🔧 ${d.chassis ? d.chassis.substring(0, 12)+'…' : ''}</p>
+                    </div>`;
                 });
-                snapshotGrid.innerHTML = cards || '<div class="doc-card">no data</div>';
+                if (snapshotGrid) snapshotGrid.innerHTML = cards || '<div class="doc-card">no data</div>';
             } catch (e) {}
         }
 
-        refreshBtn.addEventListener('click', loadSheetData);
+        // ----- PDF generation (with numerical sorting) -----
+        function generateFullPdf() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+            doc.setFontSize(16);
+            doc.text('CK Manager - Complete Vehicle Report (WANB order)', 14, 15);
+            doc.setFontSize(9);
+            doc.text(`Generated: ${new Date().toLocaleString()} | Exchange rate: ${exchange ? exchange.value : '130'} KES/USD`, 14, 22);
+
+            recordsCol.get().then(snap => {
+                let docs = [];
+                snap.forEach(doc => docs.push(doc.data()));
+                // Sort numerically
+                docs = sortRecordsBySm(docs);
+                
+                const data = [];
+                docs.forEach(d => {
+                    const mu = (d.sellingPrice - d.cfr).toFixed(2);
+                    const rate = parseFloat(exchange ? exchange.value : '130') || 130;
+                    const mk = (mu * rate).toFixed(2);
+                    data.push([
+                        d.paymentRate || '', d.sm || '', d.supplier || '', d.makeModel || '', d.chassis || '',
+                        `$${d.cfr?.toFixed(2)}`, `$${d.paidUsd?.toFixed(2)}`, `$${d.sellingPrice?.toFixed(2)}`,
+                        `$${mu}`, `KES ${mk}`
+                    ]);
+                });
+                doc.autoTable({
+                    head: [['Pay rate','SM','Supplier','Make/Model','Chassis','CFR','Paid','Sell','Margin USD','Margin KES']],
+                    body: data,
+                    startY: 30,
+                    styles: { fontSize: 8, cellPadding: 3, textColor: [30,40,50] },
+                    headStyles: { fillColor: [70, 90, 70], textColor: [240,255,240] },
+                });
+                doc.save('ck_manager_full_sequential.pdf');
+            }).catch(err => alert('PDF error: ' + err));
+        }
+
+        function generateSnapshotPdf() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.setTextColor(40, 80, 40);
+            doc.text('CK Manager · Vehicle Snapshot', 14, 18);
+            doc.setFontSize(9);
+            doc.text(`Exchange rate: ${exchange ? exchange.value : '130'} KES/USD — ${new Date().toLocaleDateString()}`, 14, 26);
+
+            recordsCol.get().then(snap => {
+                let docs = [];
+                snap.forEach(doc => docs.push(doc.data()));
+                // Sort numerically and take first 6
+                docs = sortRecordsBySm(docs).slice(0, 6);
+                
+                let y = 38;
+                docs.forEach((d) => {
+                    const mu = (d.sellingPrice - d.cfr).toFixed(2);
+                    const rate = parseFloat(exchange ? exchange.value : '130') || 130;
+                    const mk = (mu * rate).toFixed(2);
+                    if (y > 260) { doc.addPage(); y = 20; }
+
+                    doc.setFillColor(235, 245, 235);
+                    doc.roundedRect(14, y-4, 180, 40, 4, 4, 'F');
+                    doc.setTextColor(20, 60, 20);
+                    doc.text(`${d.makeModel || 'Vehicle'} | ${d.supplier || ''}`, 18, y+2);
+                    doc.setTextColor(60, 60, 60);
+                    doc.text(`SM: ${d.sm || ''}  |  ${d.chassis ? d.chassis.substring(0,14) : ''}`, 18, y+10);
+                    doc.text(`CFR $${d.cfr?.toFixed(2)}  |  Sell $${d.sellingPrice?.toFixed(2)}`, 18, y+18);
+                    doc.text(`Margin USD: $${mu}  |  Margin KES: ${mk}`, 18, y+28);
+                    y += 48;
+                });
+                doc.save('ck_snapshot_sequential.pdf');
+            }).catch(err => alert('Snapshot error: ' + err));
+        }
+
+        function downloadRangePdf() {
+            if (!allRecords.length) {
+                alert('No records available');
+                return;
+            }
+            
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const fromVal = rangeFrom ? rangeFrom.value.trim().toUpperCase() : '';
+            const toVal = rangeTo ? rangeTo.value.trim().toUpperCase() : '';
+            const rate = parseFloat(exchange ? exchange.value : '130') || 130;
+
+            let filtered = allRecords.filter(rec => {
+                if (fromVal || toVal) {
+                    const sm = rec.sm || '';
+                    const smNum = getSmNumber(sm);
+                    const fromNum = fromVal ? getSmNumber(fromVal) : 0;
+                    const toNum = toVal ? getSmNumber(toVal) : Infinity;
+                    
+                    if (fromVal && smNum < fromNum) return false;
+                    if (toVal && smNum > toNum) return false;
+                }
+                if (searchTerm) {
+                    const haystack = `${rec.sm} ${rec.makeModel} ${rec.chassis} ${rec.supplier}`.toLowerCase();
+                    return haystack.includes(searchTerm);
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) { alert('No records match the current filter'); return; }
+            
+            // Sort numerically
+            filtered = sortRecordsBySm(filtered);
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+            doc.setFontSize(16);
+            doc.text('CK Manager - Filtered Range Report', 14, 15);
+            doc.setFontSize(9);
+            let rangeText = `Range: ${fromVal || 'START'} to ${toVal || 'END'} | Search: "${searchInput ? searchInput.value : ''}"`;
+            doc.text(rangeText, 14, 22);
+
+            const data = filtered.map(d => {
+                const mu = (d.sellingPrice - d.cfr).toFixed(2);
+                const mk = (mu * rate).toFixed(2);
+                return [
+                    d.paymentRate || '', d.sm || '', d.supplier || '', d.makeModel || '', d.chassis || '',
+                    `$${d.cfr?.toFixed(2)}`, `$${d.paidUsd?.toFixed(2)}`, `$${d.sellingPrice?.toFixed(2)}`,
+                    `$${mu}`, `KES ${mk}`
+                ];
+            });
+
+            doc.autoTable({
+                head: [['Pay rate','SM','Supplier','Make/Model','Chassis','CFR','Paid','Sell','Margin USD','Margin KES']],
+                body: data,
+                startY: 30,
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [70, 90, 70] }
+            });
+            doc.save('ck_filtered_range.pdf');
+        }
+
+        if (downloadPdfBtn) downloadPdfBtn.addEventListener('click', generateFullPdf);
+        if (downloadSnapshotBtn) downloadSnapshotBtn.addEventListener('click', generateSnapshotPdf);
+        if (downloadRangeBtn) downloadRangeBtn.addEventListener('click', downloadRangePdf);
+
+        // Tab switching
         function switchTab(tabId) {
             tabs.forEach(b => b.classList.remove('active'));
-            document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
-            [tabEntry, tabSpread, tabOverview].forEach(t => t.classList.add('hidden-tab'));
-            if (tabId === 'entry') { tabEntry.classList.remove('hidden-tab'); updateSequentialSM(); }
-            if (tabId === 'spreadsheet') { tabSpread.classList.remove('hidden-tab'); loadSheetData(); }
-            if (tabId === 'overview') { tabOverview.classList.remove('hidden-tab'); updateOverviewAndSnapshots(); }
+            const activeTab = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+            if (activeTab) activeTab.classList.add('active');
+            
+            if (tabEntry) tabEntry.classList.add('hidden-tab');
+            if (tabSpread) tabSpread.classList.add('hidden-tab');
+            if (tabOverview) tabOverview.classList.add('hidden-tab');
+            
+            if (tabId === 'entry' && tabEntry) { 
+                tabEntry.classList.remove('hidden-tab'); 
+                updateSequentialSM(); 
+            }
+            if (tabId === 'spreadsheet' && tabSpread) { 
+                tabSpread.classList.remove('hidden-tab'); 
+                loadSheetData(); 
+            }
+            if (tabId === 'overview' && tabOverview) { 
+                tabOverview.classList.remove('hidden-tab'); 
+                updateOverviewAndSnapshots(); 
+            }
         }
-        tabs.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-
-        // initialise
-        updateSequentialSM().then(() => { updateCalc(); loadSheetData(); updateOverviewAndSnapshots(); });
-        exchange.addEventListener('input', () => {
-            updateCalc();
-            if (!tabSpread.classList.contains('hidden-tab')) loadSheetData();
-            if (!tabOverview.classList.contains('hidden-tab')) updateOverviewAndSnapshots();
+        
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
         });
 
-        // pdf functions (abbreviated)
-        document.getElementById('downloadPdfReport').addEventListener('click', () => { alert('PDF generation uses same logic, omitted for brevity'); });
-        document.getElementById('downloadSnapshotPdf').addEventListener('click', () => { alert('Snapshot PDF'); });
+        // Initialize
+        updateSequentialSM().then(() => { 
+            updateCalc(); 
+            loadSheetData(); 
+            updateOverviewAndSnapshots(); 
+        });
+
+        if (exchange) {
+            exchange.addEventListener('input', () => {
+                updateCalc();
+                if (tabSpread && !tabSpread.classList.contains('hidden-tab')) applySearchFilter();
+                if (tabOverview && !tabOverview.classList.contains('hidden-tab')) updateOverviewAndSnapshots();
+            });
+        }
     })();
 </script>
 </body>
